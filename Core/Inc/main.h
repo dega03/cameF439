@@ -122,6 +122,7 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN Private defines */
 //#define LWIP_DEBUG 1
+//#define  __Garage 1
 
 /* USER CODE END Private defines */
 

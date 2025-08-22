@@ -4,6 +4,10 @@
 /Debug
 /Release
 *.bak
+!Debug/Nucleo_TCP.elf
+!Debug/Nucleo_TCP.bin
+!Release/Nucleo_TCP.elf
+!Release/Nucleo_TCP.bin
 
 # Object files
 *.o
@@ -54,3 +58,5 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+
