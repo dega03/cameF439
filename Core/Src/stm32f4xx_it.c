@@ -216,7 +216,6 @@ void DMA1_Stream5_IRQHandler(void)
 	//
 
   /* USER CODE END DMA1_Stream5_IRQn 0 */
-
   /* USER CODE BEGIN DMA1_Stream5_IRQn 1 */
 	LL_GPIO_TogglePin(LD1_GPIO_Port, LD1_Pin);													//Debug
 	LL_DMA_ClearFlag_TC5(DMA1);
@@ -298,7 +297,6 @@ void DMA1_Stream6_IRQHandler(void)
 	// Here for DMA interrupt TIM4_UP
 
   /* USER CODE END DMA1_Stream6_IRQn 0 */
-
   /* USER CODE BEGIN DMA1_Stream6_IRQn 1 */
 
   /* USER CODE BEGIN DMA1_Stream3_IRQn 1 */
@@ -386,4 +384,3 @@ void ETH_IRQHandler(void)
 /* USER CODE BEGIN 1 */
 
 /* USER CODE END 1 */
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

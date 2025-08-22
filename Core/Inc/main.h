@@ -119,6 +119,7 @@ void Error_Handler(void);
 #define LD2_GPIO_Port GPIOB
 #define Swim_Pin LL_GPIO_PIN_8
 #define Swim_GPIO_Port GPIOB
+
 /* USER CODE BEGIN Private defines */
 //#define LWIP_DEBUG 1
 
@@ -129,5 +130,3 @@ void Error_Handler(void);
 #endif
 
 #endif /* __MAIN_H */
-
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
