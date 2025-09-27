@@ -431,10 +431,12 @@ static void eth_interface_send(struct tcp_pcb *tpcb, struct eth_interface_struct
     		CodeData[0] = 0xAA;
 			sprintf(DataTcpTx,"WC%02d|%02X>%01X.%01X%01X%01X%01X%01X%01X%01X%01X\r\n",AddrCode,CodeData[0],CodeData[1] & 0xf,CodeData[2] & 0xf,CodeData[3] & 0xf,CodeData[4] & 0xf,CodeData[5] & 0xf,CodeData[6] & 0xf,CodeData[7] & 0xf,CodeData[8] & 0xf,CodeData[9] & 0xf);
 			wr_err = tcp_write(tpcb, DataTcpTx, 20, 1);
+			tcp_output(tpcb);
             CameStatus = CameOpWrite;
     	} else {
 			sprintf(DataTcpTx,"WC Err = %04X\r\n",Err);
 			wr_err = tcp_write(tpcb, DataTcpTx, 15, 1);
+			tcp_output(tpcb);
     	}
         memmove(CurrCmd, CurrCmd+13,RxCmdPtr-13);
         RxCmdPtr -= 13;
@@ -451,10 +453,12 @@ static void eth_interface_send(struct tcp_pcb *tpcb, struct eth_interface_struct
     	if (Err == 0) {
     		sprintf(DataTcpTx,"RC%02d\r\n",AddrCode);
             wr_err = tcp_write(tpcb, DataTcpTx, 6, 1);
+			tcp_output(tpcb);
             CameStatus = CameOpRead;
     	} else {
 			sprintf(DataTcpTx,"RC Err = %04X\r\n",Err);
 			wr_err = tcp_write(tpcb, DataTcpTx, 15, 1);
+			tcp_output(tpcb);
     	}
         memmove(CurrCmd, CurrCmd+4,RxCmdPtr-4);
         RxCmdPtr -= 4;
@@ -475,10 +479,12 @@ static void eth_interface_send(struct tcp_pcb *tpcb, struct eth_interface_struct
     		memset(&CodeData[1],0xff,9);
     		sprintf(DataTcpTx,"DC%02d\r\n",AddrCode);
             wr_err = tcp_write(tpcb, DataTcpTx, 6, 1);
+			tcp_output(tpcb);
             CameStatus = CameOpWrite;
     	} else {
 			sprintf(DataTcpTx,"DC Err = %04X\r\n",Err);
 			wr_err = tcp_write(tpcb, DataTcpTx, 15, 1);
+			tcp_output(tpcb);
     	}
         memmove(CurrCmd, CurrCmd+6,RxCmdPtr-6);
         RxCmdPtr -= 6;
@@ -487,18 +493,21 @@ static void eth_interface_send(struct tcp_pcb *tpcb, struct eth_interface_struct
     	 // sprintf takes about about 58us
         sprintf(DataTcpTx,"RB%02d|%02X>%01X.%01X%01X%01X%01X%01X%01X%01X%01X\r\n",AddrCode,CodeData[0],CodeData[1] & 0xf,CodeData[2] & 0xf,CodeData[3] & 0xf,CodeData[4] & 0xf,CodeData[5] & 0xf,CodeData[6] & 0xf,CodeData[7] & 0xf,CodeData[8] & 0xf,CodeData[9] & 0xf);
         wr_err = tcp_write(tpcb, DataTcpTx, 20, 1);
+		tcp_output(tpcb);
         memmove(CurrCmd, CurrCmd+2,RxCmdPtr-2);
         RxCmdPtr -= 2;
     }
     if (CurrCmd[0] == 'T' && RxCmdPtr >0){
         sprintf(DataTcpTx,"%08lX\r\n",CurrTimestamp);
         wr_err = tcp_write(tpcb, DataTcpTx, 10, 1);
+		tcp_output(tpcb);
         memmove(CurrCmd, CurrCmd+1,RxCmdPtr-1);
         RxCmdPtr -= 1;
     }
     if (CurrCmd[0] == 'S' && RxCmdPtr >0){
         sprintf(DataTcpTx,"%04X-%04X|%02X\r\n",(unsigned int)NewCodePtr,(unsigned int)NewCode2ReadPtr,CameStatus);
         wr_err = tcp_write(tpcb, DataTcpTx, 14, 1);
+		tcp_output(tpcb);
         memmove(CurrCmd, CurrCmd+1,RxCmdPtr-1);
         RxCmdPtr -= 1;
     }
@@ -531,10 +540,12 @@ static void eth_interface_send(struct tcp_pcb *tpcb, struct eth_interface_struct
 		if (CodeNr>= NCodesInMem ) {
             sprintf(DataTcpTx,"P%04X-XXXXXXXX:XXXXXXXX>XX|XX\r\n",(unsigned int)CodeNr);
             wr_err = tcp_write(tpcb, DataTcpTx, 31, 1);
+			tcp_output(tpcb);
 		} else {
     	//Temp = strtol(CurrCmd +1, NULL, 16);
             sprintf(DataTcpTx,"P%04X-%08lX:%08lX>%02X|%02X\r\n",(unsigned int)CodeNr,Codes[CodeNr].Timestamp,Codes[CodeNr].Code,(unsigned int)(Codes[CodeNr].Status >> 16) & 0xff, (unsigned int)Codes[CodeNr].Status & 0xff);
             wr_err = tcp_write(tpcb, DataTcpTx, 31, 1);
+			tcp_output(tpcb);
 		}
         memmove(CurrCmd, CurrCmd + 5,RxCmdPtr -5);
         RxCmdPtr -= 5;
@@ -542,7 +553,6 @@ static void eth_interface_send(struct tcp_pcb *tpcb, struct eth_interface_struct
         NewCode2ReadPtr = (CodeNr + 1 );
 		if (NewCode2ReadPtr >= NCodesInMem)
 			NewCode2ReadPtr = 0;
-
     }
     if (CurrCmd[0] == '@' && RxCmdPtr >0){
         NVIC_SystemReset();
