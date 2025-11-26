@@ -778,4 +778,3 @@ __weak void ethernetif_notify_conn_changed(struct netif *netif)
 
 }
 /* USER CODE END 8 */
-
