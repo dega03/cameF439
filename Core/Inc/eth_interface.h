@@ -30,6 +30,7 @@
 #ifndef __ETH_INTERFACE_H__
 #define __ETH_INTERFACE_H__
 
-void eth_interface_init(void);
+void tcp_com_init(void);
+void tcp_com_sendall(char * str, int len, int port);
 
 #endif /* __TCP_ECHOSERVER */

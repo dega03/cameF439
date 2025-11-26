@@ -6,6 +6,9 @@
  */
 
 #include "Swim.h"
+#include "lwip.h"
+
+void WaitProc(void);
 
 uint32_t bufferRxDMA[1024];
 uint32_t bufferTxDMA[256]; // = { 0xABDF,0xABDF,0xABDF,0xABDF,0x55f055f0,0x55f055f0,0xffffffff,0xffffffff};
@@ -134,7 +137,7 @@ void SWIM_Read(uint32_t addr, uint8_t Ndata, uint16_t * DataOut) {
 	  BufferPtr2 = PrepareTxData(Ndata,BufferPtr); //N
 
 	  while(SWIMStatus == SWIM_ReadCmd)
-		  ;
+		  WaitProc();
 //		  if (LL_DMA_IsActiveFlag_FE2(DMA1) || LL_DMA_IsActiveFlag_TE2(DMA1))
 //				  LL_GPIO_SetOutputPin(LD3_GPIO_Port, LD3_Pin);
 	  if (SWIMStatus == SWIM_ReadCmdAck) {  // Send N
@@ -161,7 +164,7 @@ void SWIM_Read(uint32_t addr, uint8_t Ndata, uint16_t * DataOut) {
 
 	  }
 	  while(SWIMStatus == SWIM_ReadCmdData)
-		  ;
+		  WaitProc();
 //		  if (LL_DMA_IsActiveFlag_FE2(DMA1) || LL_DMA_IsActiveFlag_TE2(DMA1))
 //			  LL_GPIO_SetOutputPin(LD3_GPIO_Port, LD3_Pin);
 
@@ -188,7 +191,7 @@ void SWIM_Read(uint32_t addr, uint8_t Ndata, uint16_t * DataOut) {
 		  BufferPtr2 = PrepareTxData((addr >> 8) & 0xff ,BufferPtr); //H
 	  }
 	  while(SWIMStatus == SWIM_ReadCmdData)
-		  ;
+		  WaitProc();
 //		  if (LL_DMA_IsActiveFlag_FE2(DMA1) || LL_DMA_IsActiveFlag_TE2(DMA1))
 //				  LL_GPIO_SetOutputPin(LD3_GPIO_Port, LD3_Pin);
 
@@ -215,7 +218,7 @@ void SWIM_Read(uint32_t addr, uint8_t Ndata, uint16_t * DataOut) {
 		  BufferPtr2 = PrepareTxData( addr & 0xff ,BufferPtr); //L
 	  }
 	  while(SWIMStatus == SWIM_ReadCmdData)
-		  ;
+		  WaitProc();
 //		  if (LL_DMA_IsActiveFlag_FE2(DMA1) || LL_DMA_IsActiveFlag_TE2(DMA1))
 //				  LL_GPIO_SetOutputPin(LD3_GPIO_Port, LD3_Pin);
 
@@ -299,7 +302,7 @@ void SWIM_Read(uint32_t addr, uint8_t Ndata, uint16_t * DataOut) {
 		  }
 	  }
 	  while (LL_DMA_IsEnabledStream(DMA1, DMA_PWM))
-		  ;
+		  WaitProc();
 //	  if ((SWIMStatus & SWIM_ErrMask) == 0 ) {  //Trap for debug
 //		  SWIMStatus = SWIM_Idle;
 //	  }
@@ -370,7 +373,7 @@ void SWIM_Write(uint32_t addr, uint8_t Ndata, uint16_t * DataIn) {
 	  BufferPtr2 = PrepareTxData(Ndata,BufferPtr); //N
 
 	  while(SWIMStatus == SWIM_WriteCmd)
-		  ;
+		  WaitProc();
 //	  if (LL_DMA_IsActiveFlag_FE2(DMA1) || LL_DMA_IsActiveFlag_TE2(DMA1))
 //			  LL_GPIO_SetOutputPin(LD3_GPIO_Port, LD3_Pin);
 	  if (SWIMStatus == SWIM_WriteCmdAck) {  // Send N
@@ -397,7 +400,7 @@ void SWIM_Write(uint32_t addr, uint8_t Ndata, uint16_t * DataIn) {
 
 	  }
 	  while(SWIMStatus == SWIM_WriteCmdData)
-		  ;
+		  WaitProc();
 
 	  if (SWIMStatus == SWIM_WriteCmdDataAck) {  // Send E
 		  SWIMStatus = SWIM_WriteCmdData;
@@ -422,7 +425,7 @@ void SWIM_Write(uint32_t addr, uint8_t Ndata, uint16_t * DataIn) {
 		  BufferPtr2 = PrepareTxData((addr >> 8) & 0xff ,BufferPtr); //H
 	  }
 	  while(SWIMStatus == SWIM_WriteCmdData)
-		  ;
+		  WaitProc();
 
 	  if (SWIMStatus == SWIM_WriteCmdDataAck) {  //Send H
 		  SWIMStatus = SWIM_WriteCmdData;
@@ -447,7 +450,7 @@ void SWIM_Write(uint32_t addr, uint8_t Ndata, uint16_t * DataIn) {
 		  BufferPtr2 = PrepareTxData( addr & 0xff ,BufferPtr); //L
 	  }
 	  while(SWIMStatus == SWIM_WriteCmdData)
-		  ;
+		  WaitProc();
 
 	  while (Ndata != 0xff && SWIM_WriteCmdDataAck) {  //First time will send Addredss L
 		  SWIMStatus = SWIM_WriteCmdData;
@@ -480,7 +483,7 @@ void SWIM_Write(uint32_t addr, uint8_t Ndata, uint16_t * DataIn) {
 		  DataIn++;
 
 		  while(SWIMStatus == SWIM_WriteCmdData)
-			  ;
+			  WaitProc();
 	  }
 
 	  //Clear status if writing went ok
@@ -554,7 +557,7 @@ void SWIMInit (void) {
 
 
 	  while (SWIMStatus < SWIM_Idle)
-		  ;
+		  WaitProc();
 	  if(SWIMStatus == SWIM_Idle) {
 		  SWIMRst();
 		  HAL_Delay(5);
@@ -618,7 +621,7 @@ void SWIMCommRst(void) {
 	  LL_TIM_EnableCounter(SWIM_TIM);
 
 	  while(SWIMStatus < SWIM_Idle)  //Errors are also > SWIM_Idle
-		  ;
+		  WaitProc();
 
 }
 void SWIMRst(void) {
@@ -668,7 +671,13 @@ void SWIMRst(void) {
 	  //LL_TIM_OC_SetCompareCH3(SWIM_TIM, 42591);  //First low pulse, 16us
 	  LL_TIM_EnableCounter(SWIM_TIM);
 	  while(SWIMStatus == SWIM_RST)
-		  ;
+		  WaitProc();
 
+}
+void WaitProc(void) {
+	if (LL_TIM_IsActiveFlag_UPDATE(TIM14)) {
+		MX_LWIP_Process();
+		LL_TIM_ClearFlag_UPDATE(TIM14);
+	}
 }
 

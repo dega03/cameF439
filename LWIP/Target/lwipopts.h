@@ -47,12 +47,6 @@
 
 /* LwIP Stack Parameters (modified compared to initialization value in opt.h) -*/
 /* Parameters set in STM32CubeMX LwIP Configuration GUI -*/
-/*----- Default Value for CMSIS_VERSION: ---*/
-#define CMSIS_VERSION 1
-/*----- Default Value for MEMP_NUM_UDP_PCB: 4 ---*/
-#define MEMP_NUM_UDP_PCB 6
-/*----- Default Value for MEMP_NUM_TCP_PCB: 5 ---*/
-#define MEMP_NUM_TCP_PCB 10
 /*----- Value in opt.h for NO_SYS: 0 -----*/
 #define NO_SYS 1
 /*----- Value in opt.h for SYS_LIGHTWEIGHT_PROT: 1 -----*/
@@ -60,35 +54,17 @@
 /*----- Value in opt.h for MEM_ALIGNMENT: 1 -----*/
 #define MEM_ALIGNMENT 4
 /*----- Default Value for MEM_SIZE: 1600 ---*/
-#define MEM_SIZE 131048
-/*----- Default Value for MEMP_NUM_PBUF: 16 ---*/
-#define MEMP_NUM_PBUF 10
-/*----- Default Value for MEMP_NUM_TCP_PCB_LISTEN: 8 ---*/
-#define MEMP_NUM_TCP_PCB_LISTEN 5
-/*----- Default Value for MEMP_NUM_SYS_TIMEOUT: 3 ---*/
-#define MEMP_NUM_SYS_TIMEOUT 10
-/*----- Default Value for PBUF_POOL_SIZE: 16 ---*/
-#define PBUF_POOL_SIZE 8
-/*----- Default Value for PBUF_POOL_BUFSIZE: 592 ---*/
-#define PBUF_POOL_BUFSIZE 512
+#define MEM_SIZE 32232
 /*----- Value in opt.h for LWIP_ETHERNET: LWIP_ARP || PPPOE_SUPPORT -*/
 #define LWIP_ETHERNET 1
 /*----- Value in opt.h for LWIP_DNS_SECURE: (LWIP_DNS_SECURE_RAND_XID | LWIP_DNS_SECURE_NO_MULTIPLE_OUTSTANDING | LWIP_DNS_SECURE_RAND_SRC_PORT) -*/
 #define LWIP_DNS_SECURE 7
-/*----- Default Value for TCP_WND: 5840 ---*/
-#define TCP_WND 2920
 /*----- Default Value for TCP_MSS: 536 ---*/
 #define TCP_MSS 1460
 /*----- Default Value for TCP_SND_BUF: 2920 ---*/
 #define TCP_SND_BUF 5840
 /*----- Default Value for TCP_SND_QUEUELEN: 17 ---*/
-#define TCP_SND_QUEUELEN 8
-/*----- Value in opt.h for TCP_SNDQUEUELOWAT: LWIP_MAX(TCP_SND_QUEUELEN)/2, 5) -*/
-#define TCP_SNDQUEUELOWAT 5
-/*----- Default Value for LWIP_NETIF_STATUS_CALLBACK: 0 ---*/
-#define LWIP_NETIF_STATUS_CALLBACK 1
-/*----- Default Value for LWIP_NETIF_EXT_STATUS_CALLBACK: 0 ---*/
-#define LWIP_NETIF_EXT_STATUS_CALLBACK 1
+#define TCP_SND_QUEUELEN 16
 /*----- Value in opt.h for LWIP_NETIF_LINK_CALLBACK: 0 -----*/
 #define LWIP_NETIF_LINK_CALLBACK 1
 /*----- Value in opt.h for LWIP_NETCONN: 1 -----*/

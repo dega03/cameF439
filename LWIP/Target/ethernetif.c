@@ -435,18 +435,7 @@ void pbuf_free_custom(struct pbuf *p)
 * @brief  Returns the current time in milliseconds
 *         when LWIP_TIMERS == 1 and NO_SYS == 1
 * @param  None
-* @retval Time
-*/
-u32_t sys_jiffies(void)
-{
-  return HAL_GetTick();
-}
-
-/**
-* @brief  Returns the current time in milliseconds
-*         when LWIP_TIMERS == 1 and NO_SYS == 1
-* @param  None
-* @retval Time
+* @retval Current Time value
 */
 u32_t sys_now(void)
 {

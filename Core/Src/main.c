@@ -28,7 +28,7 @@
 /* USER CODE BEGIN Includes */
 #include "string.h"
 #include "Came.h"
-
+#include "eth_interface.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -71,6 +71,7 @@ static void MX_TIM4_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM5_Init(void);
+static void MX_TIM14_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -125,6 +126,7 @@ int main(void)
   MX_TIM1_Init();
   MX_TIM2_Init();
   MX_TIM5_Init();
+  MX_TIM14_Init();
   /* USER CODE BEGIN 2 */
 
 
@@ -133,11 +135,13 @@ int main(void)
   LL_TIM_EnableCounter(TIM1);
 
   LL_TIM_EnableCounter(TIM5); //Counts at 1MHz, to generate schedule in main.c
+  LL_TIM_EnableCounter(TIM14); //To check update event to generate ethernet process
   /* USER CODE BEGIN 5 */
   SWIMInit();
 
   // Inith ethernet interface
-  eth_interface_init();
+  //eth_interface_init();
+  tcp_com_init();
 
 #ifdef Debug  //Print memory
   uint32_t RxAddr = 0x5;
@@ -154,7 +158,6 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-
 	  CurrTimestamp = LL_TIM_GetCounter(TIM5);
 #ifdef Debug  //Print memory
 
@@ -234,7 +237,8 @@ int main(void)
 //	  LL_GPIO_ResetOutputPin(LD3_GPIO_Port, LD3_Pin);
 //	  LL_GPIO_ResetOutputPin(LD1_GPIO_Port, LD1_Pin);
 
-
+	  LL_TIM_SetCounter(TIM14,0);
+	  LL_TIM_ClearFlag_UPDATE(TIM14);
 	  MX_LWIP_Process();
     /* USER CODE END WHILE */
 
@@ -600,6 +604,38 @@ static void MX_TIM5_Init(void)
 }
 
 /**
+  * @brief TIM14 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM14_Init(void)
+{
+
+  /* USER CODE BEGIN TIM14_Init 0 */
+
+  /* USER CODE END TIM14_Init 0 */
+
+  LL_TIM_InitTypeDef TIM_InitStruct = {0};
+
+  /* Peripheral clock enable */
+  LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM14);
+
+  /* USER CODE BEGIN TIM14_Init 1 */
+
+  /* USER CODE END TIM14_Init 1 */
+  TIM_InitStruct.Prescaler = 175;
+  TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
+  TIM_InitStruct.Autoreload = 999;
+  TIM_InitStruct.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;
+  LL_TIM_Init(TIM14, &TIM_InitStruct);
+  LL_TIM_DisableARRPreload(TIM14);
+  /* USER CODE BEGIN TIM14_Init 2 */
+
+  /* USER CODE END TIM14_Init 2 */
+
+}
+
+/**
   * @brief USART3 Initialization Function
   * @param None
   * @retval None
@@ -790,7 +826,7 @@ void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
   /* User can add his own implementation to report the file name and line number,
-     tex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
