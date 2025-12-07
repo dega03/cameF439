@@ -38,6 +38,9 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+
+#define Debug 1
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -94,9 +97,9 @@ int main(void)
 	NewCode2ReadPtr = 0;
 	uint32_t LastCPUStatusCheck,LastCameOp;
 	uint32_t CurrTimestamp;
-
+	uint8_t Contatore;
 	memset(&CodeData[0],0xff,10);  //Clear current buffer
-
+	uint8_t ControllerVersion;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -128,7 +131,7 @@ int main(void)
   MX_TIM5_Init();
   MX_TIM14_Init();
   /* USER CODE BEGIN 2 */
-
+  printf_init();
 
   //TImers 1 and 2 used in cascade to generate timestamp for ethernet messages
   LL_TIM_EnableCounter(TIM2);
@@ -140,11 +143,11 @@ int main(void)
   SWIMInit();
 
   // Inith ethernet interface
-  //eth_interface_init();
   tcp_com_init();
 
 #ifdef Debug  //Print memory
-  uint32_t RxAddr = 0x5;
+  uint32_t RxAddr = 0x5;  //Later is shifted by 4
+  uint32_t TimeForDelay;
   uint8_t RxChar;
 #endif
 
@@ -152,28 +155,30 @@ int main(void)
   LastCPUStatusCheck = CurrTimestamp;
   LastCameOp = CurrTimestamp;
 
+  ControllerVersion = 0;
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+
 	  CurrTimestamp = LL_TIM_GetCounter(TIM5);
-#ifdef Debug  //Print memory
+#ifdef Debug  //Print memory  1kB of memory 00..0x3ff
 
 	  i = 0;
 //	  SWIM_Write(0x7f99, 1,(uint16_t *)&Data);
 	  SWIM_Read((RxAddr<<4),0x40,(uint16_t *)&Data);
 //	  SWIMRst();
-	  sprintf(TxBuffer,"%05X > ", (unsigned int)RxAddr<<4);
-	  LL_PrintMyString(TxBuffer,0);
+	  sprintf(TxBuffer,"%04X > ", (unsigned int)RxAddr<<4);
+	  printf(TxBuffer); //,0);
 	  while(i<32) {
 		  sprintf(TxBuffer,"%02X %02X %02X %02X.%02X %02X %02X %02X|", Data[i] & 0xffff, (Data[i]>>16) & 0xffff, Data[i+1] & 0xffff, (Data[i+1]>>16) & 0xffff, Data[i+2] & 0xffff, (Data[i+2]>>16) & 0xffff,Data[i+3] & 0xffff, (Data[i+3]>>16) & 0xffff);
 		  i += 4;
-		  if (i<32)
-			  LL_PrintMyString(TxBuffer,0);
-		  else
-			  LL_PrintMyString(TxBuffer,1);
+		  printf(TxBuffer);
+		  if (i>=32)
+			  printf("%d\n",Contatore++);
 	  }
 #endif
 	  if (SWIMStatus != SWIM_Idle) {
@@ -193,9 +198,12 @@ int main(void)
 			  RxChar = RxChar - 'a' + 10;
 		  else
 			  RxChar = RxChar - '0';
-		  RxAddr = ((RxAddr<<4) | RxChar) & 0xffff;
+		  RxAddr = ((RxAddr<<4) | RxChar) & 0xfff;
 	  }
-	  osDelay(500);
+	  TimeForDelay = LL_TIM_GetCounter(TIM5);
+	  while ((LL_TIM_GetCounter(TIM5) - TimeForDelay) < 500000)
+		  ;
+	  //osDelay(500);
 #endif
 
 	  if ((CurrTimestamp - LastCPUStatusCheck) > 3000000l) {  //every 3 sec check if came is in reset
@@ -204,7 +212,14 @@ int main(void)
 		  if ((Data[0] & 8 ) == 8) {
 			  Data[0] = Data[0] & 0xF7;  //clear bit 3 to resume CPU from stall
 			  SWIM_Write(0x7f99, 1,(uint16_t *)&Data);
-
+		  }
+		  if ( ControllerVersion == 0) {
+			  SWIM_Read(0x8100,0x4,(uint16_t *)&Data);
+			  if (Data[0] == 0xb70007 && Data[1] == 0x3f0018) {         //V2: S1238100 07B7183F
+				  ControllerVersion = 2;
+			  } else if (Data[0] == 0x3f000C && Data[1] == 0x3f0014 ) {  //V1: S1238100 0C3F143F
+				  ControllerVersion = 1;
+			  }
 		  }
 	  }
 	  //Print timestamp
@@ -212,8 +227,8 @@ int main(void)
 	  //LL_PrintMyString(TxBuffer,1);
 
 #ifndef Debug
-	  if ((CurrTimestamp - LastCameOp) > 100000l) {
-		  CheckStoreCode();
+	  if (((CurrTimestamp - LastCameOp) > 100000l) && (ControllerVersion > 0) ) {
+		  CheckStoreCode(ControllerVersion);
 
 		  if (CameStatus == CameOpRead) {
 			  LL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
@@ -226,6 +241,8 @@ int main(void)
 		  }
 		  LastCameOp = CurrTimestamp;
 	  }
+#else
+	  (void)LastCameOp;
 #endif
 
 	  //LL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
@@ -237,8 +254,7 @@ int main(void)
 //	  LL_GPIO_ResetOutputPin(LD3_GPIO_Port, LD3_Pin);
 //	  LL_GPIO_ResetOutputPin(LD1_GPIO_Port, LD1_Pin);
 
-	  LL_TIM_SetCounter(TIM14,0);
-	  LL_TIM_ClearFlag_UPDATE(TIM14);
+
 	  MX_LWIP_Process();
     /* USER CODE END WHILE */
 
@@ -667,6 +683,27 @@ static void MX_USART3_UART_Init(void)
   GPIO_InitStruct.Alternate = LL_GPIO_AF_7;
   LL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
+  /* USART3 DMA Init */
+
+  /* USART3_TX Init */
+  LL_DMA_SetChannelSelection(DMA1, LL_DMA_STREAM_3, LL_DMA_CHANNEL_4);
+
+  LL_DMA_SetDataTransferDirection(DMA1, LL_DMA_STREAM_3, LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
+
+  LL_DMA_SetStreamPriorityLevel(DMA1, LL_DMA_STREAM_3, LL_DMA_PRIORITY_LOW);
+
+  LL_DMA_SetMode(DMA1, LL_DMA_STREAM_3, LL_DMA_MODE_NORMAL);
+
+  LL_DMA_SetPeriphIncMode(DMA1, LL_DMA_STREAM_3, LL_DMA_PERIPH_NOINCREMENT);
+
+  LL_DMA_SetMemoryIncMode(DMA1, LL_DMA_STREAM_3, LL_DMA_MEMORY_INCREMENT);
+
+  LL_DMA_SetPeriphSize(DMA1, LL_DMA_STREAM_3, LL_DMA_PDATAALIGN_BYTE);
+
+  LL_DMA_SetMemorySize(DMA1, LL_DMA_STREAM_3, LL_DMA_MDATAALIGN_BYTE);
+
+  LL_DMA_DisableFifoMode(DMA1, LL_DMA_STREAM_3);
+
   /* USER CODE BEGIN USART3_Init 1 */
 
   /* USER CODE END USART3_Init 1 */
@@ -697,6 +734,9 @@ static void MX_DMA_Init(void)
   LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_DMA1);
 
   /* DMA interrupt init */
+  /* DMA1_Stream3_IRQn interrupt configuration */
+  NVIC_SetPriority(DMA1_Stream3_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
+  NVIC_EnableIRQ(DMA1_Stream3_IRQn);
   /* DMA1_Stream5_IRQn interrupt configuration */
   NVIC_SetPriority(DMA1_Stream5_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),1, 0));
   NVIC_EnableIRQ(DMA1_Stream5_IRQn);

@@ -26,7 +26,7 @@ struct CodeLog {
 	uint32_t Status;  //low 4 bits = relay, high 4 bit = result (1 = open, 0 = wrong code) //Using 32 bits because it will align every 4 bytes
 };
 
-void CheckStoreCode(void);
+void CheckStoreCode(uint8_t);
 void ReadFlashCode(void);
 void WriteFlashCode(void);
 

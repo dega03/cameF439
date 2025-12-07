@@ -23,7 +23,7 @@
 ******************************************************************************
 ** @attention
 **
-** Copyright (c) 2025 STMicroelectronics.
+** Copyright (c) 2024 STMicroelectronics.
 ** All rights reserved.
 **
 ** This software is licensed under terms that can be found in the LICENSE file
@@ -37,23 +37,24 @@
 ENTRY(Reset_Handler)
 
 /* Highest address of the user mode stack */
-_estack = ORIGIN(RAM) + LENGTH(RAM); /* end of "RAM" Ram type memory */
+_estack = ORIGIN(RAM) + LENGTH(RAM);	/* end of "RAM" Ram type memory */
 
-_Min_Heap_Size = 0x4000; /* required amount of heap */
-_Min_Stack_Size = 0x800; /* required amount of stack */
+_Min_Heap_Size = 0x4000;	/* required amount of heap  */
+_Min_Stack_Size = 0x1000;	/* required amount of stack */
 
+/* CCM Accessible only by CPU */
 /* Memories definition */
 MEMORY
 {
   CCMRAM    (xrw)    : ORIGIN = 0x10000000,   LENGTH = 64K
   RAM    (xrw)    : ORIGIN = 0x20000000,   LENGTH = 192K
+  CCM    (xrw)    : ORIGIN = 0x10000000,   LENGTH = 64K
   FLASH    (rx)    : ORIGIN = 0x8000000,   LENGTH = 2048K
 }
 
 /* Sections */
 SECTIONS
 {
-
   /* The startup code into "FLASH" Rom type memory */
   .isr_vector :
   {

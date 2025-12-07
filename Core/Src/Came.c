@@ -1,8 +1,9 @@
 /*
  * Came.c
  *
- *  Created on: 30 Jun 2020
+ *  Created on: 07 Dec 2025
  *      Author: Marco
+ *      Change write sequence from address if it is odd or even
  */
 
 #include "Came.h"
@@ -19,13 +20,29 @@ CAMESTATUS CameStatus;
 uint8_t  AddrCode;   //Address for code, 0..50
 uint8_t  CodeData[16];   //[AA or 00] [1/2/3 or FF] [code1] .. [code8]
 
-void CheckStoreCode(void) {
+void CheckStoreCode(uint8_t ControllerVersion) {
 
-	uint32_t CodeTmp;
+	static uint32_t CodeTmp;
+	static uint16_t LastNPulsantiPremuti = 0; //0x94
+	static uint16_t LastPulsantiCountDown = 0; // 0x98
 
 	LL_GPIO_SetOutputPin(LD1_GPIO_Port, LD1_Pin);
-	SWIM_Read(0x50,0x30,(uint16_t *)&Data);
-	HAL_Delay(1);
+	if (ControllerVersion == 1) {
+		SWIM_Read(0x50,0x30,(uint16_t *)&Data);
+		HAL_Delay(1);
+	} else if (ControllerVersion == 2) {
+		SWIM_Read(0x80,0x30,(uint16_t *)&Data);
+		CodeTmp = (Data[10] & 0xff) || ((Data[12] & 0xff) << 8);
+		if ((LastNPulsantiPremuti > 0) && (LastPulsantiCountDown > 0)) {
+			if ((Data[10] & 0xff) == 0) {
+				Data[14] = 0xAA;
+			} else {
+				Data[14] = 0;
+			}
+		}
+		LastNPulsantiPremuti = (Data[10] & 0xff);
+		LastPulsantiCountDown = (Data[12] & 0xff);
+	}
 	if ((SWIMStatus == SWIM_Idle) && ((Data[14] & 0xffff) == 0xAA)) {  //9 bytes from 0x6C, if = AA then there is a new code
 		//Store time and code
 		Codes[NewCodePtr].Timestamp = LL_TIM_GetCounter(TIM2);
@@ -60,16 +77,35 @@ void CheckStoreCode(void) {
 			}
 		}
 		Codes[NewCodePtr].Code = CodeTmp; //(Data[14] & 0xf)>>16 | (Data[15] & 0xf) << 4 | (Data[15] & 0xf0000)>>8 | (Data[15] & 0xf)<<16 | (Data[15] & 0xf0000)>>16 | (Data[15] & 0xf) | (Data[15] & 0xf0000)>>16 | (Data[15] & 0xf);
-		Codes[NewCodePtr].Status = (Data[4] & 0xffff0000) | (Data[5] & 0xffff); //AAxxxx if opened, 01/02 if opened relais 1 or 2, ff if wrong code
+		if (ControllerVersion == 2) {
+			SWIM_Read(0x60,6,(uint16_t *)&Data);
+			CodeTmp = 0;
+			while ((SWIMStatus != SWIM_Idle) && (CodeTmp < 5)) {
+				HAL_Delay(1);
+				SWIM_Read(0x60,6,(uint16_t *)&Data);
+				CodeTmp++;
+			}
+			if ((Data[1] & 0xff) == 0xAA) {
+				  //*** 0x62 AA se codice ha aperto, 00 se codice errato
+				  //***   0x63 01/02.03 porta se codice ha aperto
+				Codes[NewCodePtr].Status = 0xAA0000 | (Data[1] >> 16);
+			} else {
+				Codes[NewCodePtr].Status = 0;
+			}
+		} else {
+			Codes[NewCodePtr].Status = (Data[4] & 0xffff0000) | (Data[5] & 0xffff); //AAxxxx if opened, 01/02 if opened relais 1 or 2, ff if wrong code
+		}
 		if (Codes[NewCodePtr].Code != 0)  //Sometimes it stores empty data, with this it will not happen
 			NewCodePtr++;
 
 		if (NewCodePtr >= NCodesInMem)
 			NewCodePtr = 0;
 
-		//Reset code in Ram, so I won't read it again
-		memset(Data, 0,18);
-		SWIM_Write(0x6c, 9,(uint16_t *)&Data);
+		if (ControllerVersion == 1) {
+			//Reset code in Ram, so I won't read it again
+			memset(Data, 0,18);
+			SWIM_Write(0x6c, 9,(uint16_t *)&Data);
+		}
 	}
 	LL_GPIO_ResetOutputPin(LD1_GPIO_Port, LD1_Pin);
 
@@ -77,8 +113,8 @@ void CheckStoreCode(void) {
 
 void ReadFlashCode(void) {
 
-	uint32_t i;
-	uint16_t * DataPtr;
+	static uint32_t i;
+	static uint16_t * DataPtr;
 
 	DataPtr = (uint16_t *)&Data;
 	LL_GPIO_SetOutputPin(LD1_GPIO_Port, LD1_Pin);
@@ -94,9 +130,9 @@ void ReadFlashCode(void) {
 
 void WriteFlashCode(void) {
 
-	uint8_t IAPSR;
-	uint32_t i;
-	uint16_t * DataPtr;
+	static uint8_t IAPSR;
+	static uint32_t i;
+	static uint16_t * DataPtr;
 
 	LL_GPIO_SetOutputPin(LD1_GPIO_Port, LD1_Pin);
 
@@ -121,64 +157,127 @@ void WriteFlashCode(void) {
 				i++;
 			}
 		} else {
-			Data[0] = 0xbf0040;  //Enable word programming
-			SWIM_Write(0x505B, 2,(uint16_t *)&Data);  //Enable standard block programming
+			if ((AddrCode & 1) == 0) {  //Address is even
+				Data[0] = 0xbf0040;  //Enable word programming
+				SWIM_Write(0x505B, 2,(uint16_t *)&Data);  //Enable standard block programming
 
-			DataPtr = (uint16_t *)&Data;
-			*DataPtr++ = CodeData[0];
-			*DataPtr++ = CodeData[1];
-			*DataPtr++ = CodeData[2];
-			*DataPtr++ = CodeData[3];
+				DataPtr = (uint16_t *)&Data;
+				*DataPtr++ = CodeData[0];
+				*DataPtr++ = CodeData[1];
+				*DataPtr++ = CodeData[2];
+				*DataPtr++ = CodeData[3];
 
-			SWIM_Write(0x4000 + ((uint32_t)AddrCode * 10), 4,(uint16_t *)&Data);
-			IAPSR = IAPSR & 0xFB; //Clear bit EOP (bit 2)
-			i = 0;
-			while (((IAPSR & 0x4) != 4) && (i<30)) {
-				HAL_Delay(1);
-				SWIM_Read (0x505F, 1,(uint16_t *)&Data);
-				IAPSR = Data[0] & 0xff;
-				i++;
-			}
+				SWIM_Write(0x4000 + ((uint32_t)AddrCode * 10), 4,(uint16_t *)&Data);
+				IAPSR = IAPSR & 0xFB; //Clear bit EOP (bit 2)
+				i = 0;
+				while (((IAPSR & 0x4) != 4) && (i<30)) {
+					HAL_Delay(1);
+					SWIM_Read (0x505F, 1,(uint16_t *)&Data);
+					IAPSR = Data[0] & 0xff;
+					i++;
+				}
 
-			Data[0] = 0xbf0040;  //Enable word programming
-			SWIM_Write(0x505B, 2,(uint16_t *)&Data);  //Enable standard block programming
+				Data[0] = 0xbf0040;  //Enable word programming
+				SWIM_Write(0x505B, 2,(uint16_t *)&Data);  //Enable standard block programming
 
-			DataPtr = (uint16_t *)&Data;
-			*DataPtr++ = CodeData[4];
-			*DataPtr++ = CodeData[5];
-			*DataPtr++ = CodeData[6];
-			*DataPtr++ = CodeData[7];
+				DataPtr = (uint16_t *)&Data;
+				*DataPtr++ = CodeData[4];
+				*DataPtr++ = CodeData[5];
+				*DataPtr++ = CodeData[6];
+				*DataPtr++ = CodeData[7];
 
-			SWIM_Write(0x4004 + ((uint32_t)AddrCode * 10), 4,(uint16_t *)&Data);  //Write Data [4:7]
-			IAPSR = IAPSR & 0xFB; //Clear bit EOP (bit 2)
-			i = 0;
-			while (((IAPSR & 0x4) != 4) && (i<30)) {
-				HAL_Delay(1);
-				SWIM_Read (0x505F, 1,(uint16_t *)&Data);
-				IAPSR = Data[0] & 0xff;
-				i++;
-			}
+				SWIM_Write(0x4004 + ((uint32_t)AddrCode * 10), 4,(uint16_t *)&Data);  //Write Data [4:7]
+				IAPSR = IAPSR & 0xFB; //Clear bit EOP (bit 2)
+				i = 0;
+				while (((IAPSR & 0x4) != 4) && (i<30)) {
+					HAL_Delay(1);
+					SWIM_Read (0x505F, 1,(uint16_t *)&Data);
+					IAPSR = Data[0] & 0xff;
+					i++;
+				}
 
-			Data[0] = CodeData[8];
-			SWIM_Write(0x4008 + ((uint32_t)AddrCode * 10), 1,(uint16_t *)&Data);  //Write Data [8]
-			IAPSR = IAPSR & 0xFB; //Clear bit EOP (bit 2)
-			i = 0;
-			while (((IAPSR & 0x4) != 4) && (i<30)) {
-				HAL_Delay(1);
-				SWIM_Read (0x505F, 1,(uint16_t *)&Data);
-				IAPSR = Data[0] & 0xff;
-				i++;
-			}
+				Data[0] = CodeData[8];
+				SWIM_Write(0x4008 + ((uint32_t)AddrCode * 10), 1,(uint16_t *)&Data);  //Write Data [8]
+				IAPSR = IAPSR & 0xFB; //Clear bit EOP (bit 2)
+				i = 0;
+				while (((IAPSR & 0x4) != 4) && (i<30)) {
+					HAL_Delay(1);
+					SWIM_Read (0x505F, 1,(uint16_t *)&Data);
+					IAPSR = Data[0] & 0xff;
+					i++;
+				}
 
-			Data[0] = CodeData[9];
-			SWIM_Write(0x4009 + ((uint32_t)AddrCode * 10), 1,(uint16_t *)&Data);  //Write Data [9]
-			IAPSR = IAPSR & 0xFB; //Clear bit EOP (bit 2)
-			i = 0;
-			while (((IAPSR & 0x4) != 4) && (i<30)) {
-				HAL_Delay(1);
-				SWIM_Read (0x505F, 1,(uint16_t *)&Data);
-				IAPSR = Data[0] & 0xff;
-				i++;
+				Data[0] = CodeData[9];
+				SWIM_Write(0x4009 + ((uint32_t)AddrCode * 10), 1,(uint16_t *)&Data);  //Write Data [9]
+				IAPSR = IAPSR & 0xFB; //Clear bit EOP (bit 2)
+				i = 0;
+				while (((IAPSR & 0x4) != 4) && (i<30)) {
+					HAL_Delay(1);
+					SWIM_Read (0x505F, 1,(uint16_t *)&Data);
+					IAPSR = Data[0] & 0xff;
+					i++;
+				}
+			} else {  //Address is odd
+				Data[0] = CodeData[0];
+				SWIM_Write(0x4000 + ((uint32_t)AddrCode * 10), 1,(uint16_t *)&Data);  //Write Data [8]
+				IAPSR = IAPSR & 0xFB; //Clear bit EOP (bit 2)
+				i = 0;
+				while (((IAPSR & 0x4) != 4) && (i<30)) {
+					HAL_Delay(1);
+					SWIM_Read (0x505F, 1,(uint16_t *)&Data);
+					IAPSR = Data[0] & 0xff;
+					i++;
+				}
+
+				Data[0] = CodeData[1];
+				SWIM_Write(0x4001 + ((uint32_t)AddrCode * 10), 1,(uint16_t *)&Data);  //Write Data [9]
+				IAPSR = IAPSR & 0xFB; //Clear bit EOP (bit 2)
+				i = 0;
+				while (((IAPSR & 0x4) != 4) && (i<30)) {
+					HAL_Delay(1);
+					SWIM_Read (0x505F, 1,(uint16_t *)&Data);
+					IAPSR = Data[0] & 0xff;
+					i++;
+				}
+
+				Data[0] = 0xbf0040;  //Enable word programming
+				SWIM_Write(0x505B, 2,(uint16_t *)&Data);  //Enable standard block programming
+
+				DataPtr = (uint16_t *)&Data;
+				*DataPtr++ = CodeData[2];
+				*DataPtr++ = CodeData[3];
+				*DataPtr++ = CodeData[4];
+				*DataPtr++ = CodeData[5];
+
+				SWIM_Write(0x4002 + ((uint32_t)AddrCode * 10), 4,(uint16_t *)&Data);
+				IAPSR = IAPSR & 0xFB; //Clear bit EOP (bit 2)
+				i = 0;
+				while (((IAPSR & 0x4) != 4) && (i<30)) {
+					HAL_Delay(1);
+					SWIM_Read (0x505F, 1,(uint16_t *)&Data);
+					IAPSR = Data[0] & 0xff;
+					i++;
+				}
+
+				Data[0] = 0xbf0040;  //Enable word programming
+				SWIM_Write(0x505B, 2,(uint16_t *)&Data);  //Enable standard block programming
+
+				DataPtr = (uint16_t *)&Data;
+				*DataPtr++ = CodeData[6];
+				*DataPtr++ = CodeData[7];
+				*DataPtr++ = CodeData[8];
+				*DataPtr++ = CodeData[9];
+
+				SWIM_Write(0x4006 + ((uint32_t)AddrCode * 10), 4,(uint16_t *)&Data);  //Write Data [4:7]
+				IAPSR = IAPSR & 0xFB; //Clear bit EOP (bit 2)
+				i = 0;
+				while (((IAPSR & 0x4) != 4) && (i<30)) {
+					HAL_Delay(1);
+					SWIM_Read (0x505F, 1,(uint16_t *)&Data);
+					IAPSR = Data[0] & 0xff;
+					i++;
+				}
+
 			}
 		}
 		if (SWIMStatus == SWIM_Idle) {
@@ -264,13 +363,61 @@ offset   0     1     2     3     4     5     6     7    8      9    10    11    
 00050 > 00 00 00 00.00 00 00 00|00 00 FF FF.FF FF FF FF|FF FF FF 01.00 1A 0C 00|08 00 01 07.00 00 00 00|00 00 00 00.00 00 00 00|00 00 00 00.00 00 03 E5|00 00 09 D0.09 D0 09 D0|00 00 00 00.00 00 00 00|
 00050 > 00 00 00 00.00 00 00 00|00 00 FF FF.FF FF FF FF|FF FF FF 01.00 1A 0C 00|08 00 01 07.00 00 00 00|00 00 00 00.00 00 00 00|00 00 00 00.00 00 03 E5|00 00 09 D0.09 D0 09 D0|00 00 00 00.00 00 00 00|
 
-Flash start at     0x0000 4000
-Last code ends at  0x0000 41FD
+RAM :    0x0000 .. 0x03FF   1kB
+EEPROM : 0x4000 .. 0x427F  640B  - Last code ends at 0x41fd
+FLASH:   0x8000 .. 0x9FFF   8kB  - Reset vectors up to 0x807F, rest is user code
+
 Code length: 10 bytes, 1st code is for programmer code
 Byte syntax:
   1  00 if code disabled, AA if code active
   2  FF if code disabled, 01 for out 1 code, 02 for out 2 code, 03 for programmer code (first code only)
   3..10  FF if disabled, 01 for 1, 02 for 2, .. 10 for 0, 00 for all the bytes (keys) not in use
 
+
+Nuovo controllore
+  ******************************************************************************
+  *** 0x4D diventa 02 dopo aver messo codice amministratore, 0x4E countown per codice amministratore
+  *** 0x57 01 se ultimo codice ha aperto, 02 se codie per uscita 2, 33 se codice errato
+  ***      sempbra sempre 0     0x5A..0x61 Dove viene messo nuovo codice prima quando aspetta conferma  ???
+  *** 0x62 AA se codice ha aperto, 00 se codice errato
+  ***   0x63 01/02.03 porta se codice ha aperto
+  ***   0x64..0x6B ultimo codice accettato
+  ***   0x94 Nr pulsanti premuti   quando va a zero e 0x98 non e' zero, controllare codice a 0x9D
+  ***   0x98 countwodn per ultimo pulsante premuto
+  ***   0x99 Timeout per troppi codici sbagliati
+  ***   0x9A Nr tentativi sbagliati
+  ***   0x9D.. Ultimo codice inserito
+  ***   0xA5... Codice che sta venendo inserito
+  ********************************
+offset   0     1     2     3     4     5     6     7    8      9    10    11    12    13    14    15    16    17    18    19    20    21    22    23  |  [These bytes are not read
+  *0x  80          84          88          8C          90          94          98          9C          A0          A4          A8          AC         |B0          B4          88          BC
+0080 > 00 00 00 00.00 00 00 00|00 00 00 00.00 02 40 00|00 01 20 05.03 00 00 00|09 00 00 00.00 01 02 03|00 00 00 00.00 01 02 05|00 00 00 00.00 00 51 07|00 00 00 00.00 00 09 C9|00 00 40 13.00 0A 00 00|
+0080 > 00 00 00 00.00 00 00 00|00 00 00 00.00 02 40 00|00 01 20 05.03 00 00 00|09 00 00 00.00 01 02 03|00 00 00 00.00 01 02 05|00 00 00 00.00 00 51 07|00 00 00 00.00 00 09 C9|00 00 40 13.00 0A 00 00|
+0080 > 00 00 00 00.00 00 00 00|00 00 00 00.00 02 40 00|00 01 20 05.03 00 00 00|08 00 00 00.00 01 02 03|00 00 00 00.00 01 02 05|00 00 00 00.00 00 51 07|00 00 00 00.00 00 09 C9|00 00 40 13.00 0A 00 00|
+0080 > 00 00 00 00.00 00 00 00|00 00 00 00.00 02 40 00|00 01 20 05.03 00 00 00|08 00 00 00.00 01 02 03|00 00 00 00.00 01 02 05|00 00 00 00.00 00 51 07|00 00 00 00.00 00 09 C9|00 00 40 13.00 0A 00 00|
+0080 > 00 00 00 00.00 00 00 00|00 00 00 00.00 02 3F 00|00 00 40 04.00 00 00 00|09 00 01 00.00 01 02 05|00 00 00 00.00 00 00 00|00 00 00 00.00 00 98 FD|00 00 00 00.00 00 01 D0|00 00 41 FD.00 33 00 00|
+0080 > 00 00 00 00.00 00 00 00|00 00 00 00.00 02 5E 00|00 00 00 01.00 1A 0C 05|0A 00 01 00.00 01 02 05|00 00 00 00.00 00 00 00|00 00 00 00.00 00 03 5D|00 00 00 00.00 00 01 D0|00 00 41 FD.00 33 00 00|
+0080 > 00 00 00 00.00 00 00 00|00 00 00 00.00 02 51 00|00 00 00 01.01 1A 0C 05|0A 00 01 00.00 01 02 05|00 00 00 00.00 01 00 00|00 00 00 00.00 00 03 5B|00 00 00 00.00 00 09 C2|00 00 41 FD.00 33 00 00|
+0080 > 00 00 00 00.00 00 00 00|00 00 00 00.00 02 22 00|00 00 00 05.02 00 00 00|0A 00 01 00.00 01 02 05|00 00 00 00.00 01 02 00|00 00 00 00.00 00 3D F5|00 00 00 00.00 00 01 C1|00 00 41 FD.00 33 00 00|
+0080 > 00 00 00 00.00 00 00 00|00 00 00 00.00 02 22 00|00 00 00 05.03 00 00 00|09 00 01 00.00 01 02 05|00 00 00 00.00 01 02 05|00 00 00 00.00 00 56 2B|00 00 00 00.00 00 09 C9|00 00 41 FD.00 33 00 00|
+0080 > 00 00 00 00.00 00 00 00|00 00 00 00.00 02 22 00|00 00 00 05.03 00 00 00|09 00 01 00.00 01 02 05|00 00 00 00.00 01 02 05|00 00 00 00.00 00 56 2B|00 00 00 00.00 00 09 C9|00 00 41 FD.00 33 00 00|
+0080 > 00 00 00 00.00 00 00 00|00 00 00 00.00 02 22 00|00 00 00 05.03 00 00 00|08 00 01 00.00 01 02 05|00 00 00 00.00 01 02 05|00 00 00 00.00 00 56 2B|00 00 00 00.00 00 09 C9|00 00 41 FD.00 33 00 00|
+0080 > 00 00 00 00.00 00 00 00|00 00 00 00.00 02 50 00|00 00 02 05.00 00 00 00|0A 00 02 00.00 01 02 05|00 00 00 00.00 00 00 00|00 00 00 00.00 00 41 33|00 00 00 00.00 00 01 D0|00 00 41 FD.00 33 00 00|
+0080 > 00 00 00 00.00 00 00 00|00 00 00 00.00 02 67 00|00 00 10 00.00 1A 0C 04|0A 00 02 00.00 01 02 05|00 00 00 00.00 00 00 00|00 00 00 00.00 00 04 76|00 00 00 00.00 00 01 D0|00 00 41 FD.00 33 00 00|
+0080 > 00 00 00 00.00 00 00 00|00 00 00 00.00 02 24 00|00 00 40 05.00 00 00 00|0A 00 02 00.00 01 02 05|00 00 00 00.00 00 00 00|00 00 00 00.00 00 48 F9|00 00 00 00.00 00 01 D0|00 00 41 FD.00 33 00 00|
+0080 > 00 00 00 00.00 00 00 00|00 00 00 00.00 02 24 00|00 00 40 05.00 00 00 00|09 00 02 00.00 01 02 05|00 00 00 00.00 00 00 00|00 00 00 00.00 00 48 F9|00 00 00 00.00 00 01 D0|00 00 41 FD.00 33 00 00|
+0080 > 00 00 00 00.00 00 00 00|00 00 00 00.00 02 24 00|00 00 40 05.00 00 00 00|09 00 02 00.00 01 02 05|00 00 00 00.00 00 00 00|00 00 00 00.00 00 48 F9|00 00 00 00.00 00 01 D0|00 00 41 FD.00 33 00 00|
+0080 > 00 00 00 00.00 00 00 00|00 00 00 00.00 02 24 00|00 00 40 05.00 00 00 00|08 00 02 00.00 01 02 05|00 00 00 00.00 00 00 00|00 00 00 00.00 00 48 F9|00 00 00 00.00 00 01 D0|00 00 41 FD.00 33 00 00|
+0080 > 00 00 00 00.00 00 00 00|00 00 00 00.00 02 24 00|00 00 40 05.00 00 00 00|08 00 02 00.00 01 02 05|00 00 00 00.00 00 00 00|00 00 00 00.00 00 48 F9|00 00 00 00.00 00 01 D0|00 00 41 FD.00 33 00 00|
+0080 > 00 00 00 00.00 00 00 00|00 00 00 00.00 02 24 00|00 00 40 05.00 00 00 00|07 00 02 00.00 01 02 05|00 00 00 00.00 00 00 00|00 00 00 00.00 00 48 F9|00 00 00 00.00 00 01 D0|00 00 41 FD.00 33 00 00|
+0080 > 00 00 00 00.00 00 00 00|00 00 00 00.00 02 24 00|00 00 40 05.00 00 00 00|07 00 02 00.00 01 02 05|00 00 00 00.00 00 00 00|00 00 00 00.00 00 48 F9|00 00 00 00.00 00 01 D0|00 00 41 FD.00 33 00 00|
+0080 > 00 00 00 00.00 00 00 00|00 00 00 00.00 02 24 00|00 00 40 05.00 00 00 00|06 00 02 00.00 01 02 05|00 00 00 00.00 00 00 00|00 00 00 00.00 00 48 F9|00 00 00 00.00 00 01 D0|00 00 41 FD.00 33 00 00|
+0080 > 00 00 00 00.00 00 00 00|00 00 00 00.00 02 24 00|00 00 40 05.00 00 00 00|06 00 02 00.00 01 02 05|00 00 00 00.00 00 00 00|00 00 00 00.00 00 48 F9|00 00 00 00.00 00 01 D0|00 00 41 FD.00 33 00 00|
+0080 > 00 00 00 00.00 00 00 00|00 00 00 00.00 02 24 00|00 00 40 05.00 00 00 00|05 00 02 00.00 01 02 05|00 00 00 00.00 00 00 00|00 00 00 00.00 00 48 F9|00 00 00 00.00 00 01 D0|00 00 41 FD.00 33 00 00|
+
+Flash conent:
+8080 > 10 08 04 02.01 0F 01 A8|C8 BE 80 8D.00 AE 03 FF|94 90 CE 80.8A AE 80 8C|F6 27 25 A5.60 27 17 BF|BC EE 03 BF.BF BE BC EE|01 90 F6 F7.5C 90 5C 90|B3 BF 26 F5.BE BC 90 93|90 EE 03 1C.00 05 20 D8
+80C0 > AE 00 00 20.02 F7 5C A3|00 C2 26 F9.AE 01 00 20|02 F7 5C A3.01 00 26 F9|CD 85 BE 20.FE CD 81 15|B7 17 26 0B.B7 17 B7 18|B7 19 B7 1B.B7 1C 81 3C|19 B6 19 A1.0A 24 02 4F|81 3F 19 B6.17 B1 18 27
+8100 > 07 B7 18 3F.1B 3F 1C 81|B6 1B A1 32.24 02 4F 81|B6 17 AA 80.81 88 0F 01|4B 10 AE 50.0F CD 99 E7|5B 01 4D 26.06 7B 01 AA|01 6B 01 4B.20 AE 50 0F|CD 99 E7 5B.01 4D 26 06|7B 01 AA 02.6B 01 4B 40|
   *
   */
