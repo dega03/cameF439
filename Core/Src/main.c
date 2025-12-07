@@ -39,7 +39,7 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
-#define Debug 1
+//#define Debug 1
 
 /* USER CODE END PD */
 
@@ -132,6 +132,7 @@ int main(void)
   MX_TIM14_Init();
   /* USER CODE BEGIN 2 */
   printf_init();
+  (void)Contatore;
 
   //TImers 1 and 2 used in cascade to generate timestamp for ethernet messages
   LL_TIM_EnableCounter(TIM2);
