@@ -32,10 +32,10 @@ void CheckStoreCode(uint8_t ControllerVersion) {
 		HAL_Delay(1);
 	} else if (ControllerVersion == 2) {
 		SWIM_Read(0x80,0x30,(uint16_t *)&Data);
-		CodeTmp = (Data[10] & 0xff) || ((Data[12] & 0xff) << 8);
+		CodeTmp = (Data[10] & 0xff) | ((Data[12] & 0xff) << 8);
 		if ((LastNPulsantiPremuti > 0) && (LastPulsantiCountDown > 0)) {
 			if ((Data[10] & 0xff) == 0) {
-				Data[14] = 0xAA;
+				Data[14] = (Data[14] & 0xffff0000) | 0xAA;
 			} else {
 				Data[14] = 0;
 			}
