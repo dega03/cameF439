@@ -6,16 +6,12 @@
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; Copyright (c) 2020 STMicroelectronics.
-  * All rights reserved.</center></h2>
+  * Copyright (c) 2025 STMicroelectronics.
+  * All rights reserved.
   *
-  * This software component is licensed by ST under Ultimate Liberty license
-  * SLA0044, the "License"; You may not use this file except in compliance with
-  * the License. You may obtain a copy of the License at:
-  *                             www.st.com/SLA0044
-  *
-  *  TCP Echo server:
-  *     C:\Users\Marco\STM32Cube\Repository\STM32Cube_FW_F4_V1.25.0\Projects\STM324x9I_EVAL\Applications\LwIP\LwIP_TCP_Echo_Server
+  * This software is licensed under terms that can be found in the LICENSE file
+  * in the root directory of this software component.
+  * If no LICENSE file comes with this software, it is provided AS-IS.
   *
   ******************************************************************************
   */
@@ -28,7 +24,7 @@
 /* USER CODE BEGIN Includes */
 #include "string.h"
 #include "Came.h"
-#include "eth_interface.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -777,10 +773,10 @@ static void MX_GPIO_Init(void)
   LL_GPIO_SetOutputPin(Rst_GPIO_Port, Rst_Pin);
 
   /**/
-  GPIO_InitStruct.Pin = UB_Pin;
+  GPIO_InitStruct.Pin = USER_Btn_Pin;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
-  LL_GPIO_Init(UB_GPIO_Port, &GPIO_InitStruct);
+  LL_GPIO_Init(USER_Btn_GPIO_Port, &GPIO_InitStruct);
 
   /**/
   GPIO_InitStruct.Pin = LD1_Pin|LD3_Pin|LD2_Pin;
@@ -819,7 +815,6 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
-
 /* USER CODE END 4 */
 
 /**
@@ -852,7 +847,10 @@ void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
-
+  __disable_irq();
+  while (1)
+  {
+  }
   /* USER CODE END Error_Handler_Debug */
 }
 #ifdef USE_FULL_ASSERT

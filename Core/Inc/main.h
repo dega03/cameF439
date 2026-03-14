@@ -7,13 +7,12 @@
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; Copyright (c) 2020 STMicroelectronics.
-  * All rights reserved.</center></h2>
+  * Copyright (c) 2025 STMicroelectronics.
+  * All rights reserved.
   *
-  * This software component is licensed by ST under Ultimate Liberty license
-  * SLA0044, the "License"; You may not use this file except in compliance with
-  * the License. You may obtain a copy of the License at:
-  *                             www.st.com/SLA0044
+  * This software is licensed under terms that can be found in the LICENSE file
+  * in the root directory of this software component.
+  * If no LICENSE file comes with this software, it is provided AS-IS.
   *
   ******************************************************************************
   */
@@ -73,8 +72,8 @@ void printf_init();
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define UB_Pin LL_GPIO_PIN_13
-#define UB_GPIO_Port GPIOC
+#define USER_Btn_Pin LL_GPIO_PIN_13
+#define USER_Btn_GPIO_Port GPIOC
 #define MCO_Pin LL_GPIO_PIN_0
 #define MCO_GPIO_Port GPIOH
 #define RMII_MDC_Pin LL_GPIO_PIN_1
@@ -122,7 +121,7 @@ void printf_init();
 
 /* USER CODE BEGIN Private defines */
 //#define LWIP_DEBUG 1
-#define  __Garage 1
+//#define  __Garage 1
 
 /* USER CODE END Private defines */
 

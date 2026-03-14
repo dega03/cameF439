@@ -149,9 +149,9 @@ static void low_level_init(struct netif *netif)
   MACAddr[0] = 0x00;
   MACAddr[1] = 0x80;
   MACAddr[2] = 0xE1;
-  MACAddr[3] = 0x00;
-  MACAddr[4] = 0x00;
-  MACAddr[5] = 0x10;
+  MACAddr[3] = 0x03;
+  MACAddr[4] = 0x11;
+  MACAddr[5] = 0x78;
   heth.Init.MACAddr = &MACAddr[0];
   heth.Init.MediaInterface = HAL_ETH_RMII_MODE;
   heth.Init.TxDesc = DMATxDscrTab;
@@ -754,16 +754,5 @@ void HAL_ETH_TxFreeCallback(uint32_t * buff)
 }
 
 /* USER CODE BEGIN 8 */
-/**
-  * @brief  This function notify user about link status changement.
-  * @param  netif: the network interface
-  * @retval None
-  */
-__weak void ethernetif_notify_conn_changed(struct netif *netif)
-{
-  /* NOTE : This is function could be implemented in user file
-            when the callback is needed,
-  */
 
-}
 /* USER CODE END 8 */
