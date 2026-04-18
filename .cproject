@@ -25,6 +25,7 @@
 							<option id="com.st.stm32cube.ide.mcu.gnu.managedbuild.option.target_board.137811819" name="Board" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.option.target_board" useByScannerDiscovery="false" value="NUCLEO-F429ZI" valueType="string"/>
 							<option id="com.st.stm32cube.ide.mcu.gnu.managedbuild.option.defaults.276798661" name="Defaults" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.option.defaults" useByScannerDiscovery="false" value="com.st.stm32cube.ide.common.services.build.inputs.revA.1.0.6 || Debug || true || Executable || com.st.stm32cube.ide.mcu.gnu.managedbuild.option.toolchain.value.workspace || NUCLEO-F429ZI || 0 || 0 || arm-none-eabi- || ${gnu_tools_for_stm32_compiler_path} || ../LWIP/App | ../LWIP/Target | ../Core/Inc | ../Middlewares/Third_Party/LwIP/src/include | ../Middlewares/Third_Party/LwIP/system | ../Drivers/STM32F4xx_HAL_Driver/Inc | ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy | ../Drivers/BSP/Components/lan8742 | ../Middlewares/Third_Party/LwIP/src/include/netif/ppp | ../Drivers/CMSIS/Device/ST/STM32F4xx/Include | ../Middlewares/Third_Party/LwIP/src/include/lwip | ../Middlewares/Third_Party/LwIP/src/include/lwip/apps | ../Middlewares/Third_Party/LwIP/src/include/lwip/priv | ../Middlewares/Third_Party/LwIP/src/include/lwip/prot | ../Middlewares/Third_Party/LwIP/src/include/netif | ../Middlewares/Third_Party/LwIP/src/include/compat/posix | ../Middlewares/Third_Party/LwIP/src/include/compat/posix/arpa | ../Middlewares/Third_Party/LwIP/src/include/compat/posix/net | ../Middlewares/Third_Party/LwIP/src/include/compat/posix/sys | ../Middlewares/Third_Party/LwIP/src/include/compat/stdc | ../Middlewares/Third_Party/LwIP/system/arch | ../Drivers/CMSIS/Include ||  ||  || USE_FULL_LL_DRIVER | USE_HAL_DRIVER | STM32F429xx ||  || LWIP | Drivers | Core/Startup | Middlewares | Core ||  ||  || ${workspace_loc:/${ProjName}/STM32F429ZITX_FLASH.ld} || true || NonSecure ||  || secure_nsclib.o ||  || None ||  ||  ||  || ::" valueType="string"/>
 							<option id="com.st.stm32cube.ide.mcu.debug.option.cpuclock.1342445354" name="Cpu clock frequence" superClass="com.st.stm32cube.ide.mcu.debug.option.cpuclock" useByScannerDiscovery="false" value="176" valueType="string"/>
+							<option id="com.st.stm32cube.ide.mcu.gnu.managedbuild.option.convertbinary.2104924418" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.option.convertbinary" value="true" valueType="boolean"/>
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="com.st.stm32cube.ide.mcu.gnu.managedbuild.targetplatform.1935356866" isAbstract="false" osList="all" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.targetplatform"/>
 							<builder buildPath="${workspace_loc:/Nucleo_TCPV2.2}/Debug" id="com.st.stm32cube.ide.mcu.gnu.managedbuild.builder.557296861" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.builder"/>
 							<tool id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.assembler.1378880684" name="MCU/MPU GCC Assembler" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.assembler">
@@ -213,4 +214,12 @@
 		</scannerConfigBuildInfo>
 	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.make.core.buildtargets"/>
+	<storageModule moduleId="refreshScope" versionNumber="2">
+		<configuration configurationName="Debug">
+			<resource resourceType="PROJECT" workspacePath="/Nucleo_TCPV2.2"/>
+		</configuration>
+		<configuration configurationName="Release">
+			<resource resourceType="PROJECT" workspacePath="/Nucleo_TCPV2.2"/>
+		</configuration>
+	</storageModule>
 </cproject>

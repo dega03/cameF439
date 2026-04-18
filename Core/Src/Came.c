@@ -12,6 +12,11 @@ struct CodeLog Codes[NCodesInMem];
 extern uint32_t NewCodePtr;
 extern uint32_t NewCode2ReadPtr;
 
+#ifdef __UseLogger
+uint32_t Logger[256];
+uint32_t LoggerCount;
+#endif
+
 extern uint32_t SWIMStatus;
 extern unsigned int Data[128];
 extern char TxBuffer[1024];
@@ -31,23 +36,22 @@ void CheckStoreCode(uint8_t ControllerVersion) {
 		SWIM_Read(0x50,0x30,(uint16_t *)&Data);
 		HAL_Delay(1);
 	} else if (ControllerVersion == 2) {
-		SWIM_Read(0x80,0x30,(uint16_t *)&Data);
-		if (((Data[12] >> 16) & 0xff) > 0 ) {  //Troppi pulsanti sbagliati
-			LastNPulsantiPremuti = 0;
-			LastPulsantiCountDown = 0;
-			Data[14] = 0;
-		} else {
-			CodeTmp = (Data[10] & 0xff) | ((Data[12] & 0xff) << 8);  //0x94-95 & 0x98-99  => Nr Pulsanti prmuti + Contdown ultimo pulsante << 8
-			if ((LastNPulsantiPremuti > 0) && (LastPulsantiCountDown > 0)) {
-				if ((Data[10] & 0xff) == 0) {
-					Data[14] = (Data[14] & 0xffff0000) | 0xAA;
-				} else {
-					Data[14] = 0;
-				}
+		SWIM_Read(0x80,0x30,(uint16_t *)&Data);  //Legge 96 bytes (18 * 4)
+		 // (((Data[12] >> 16) & 0xff) > 0 )  //Troppi pulsanti sbagliati
+		//CodeTmp = (Data[10] & 0xff) | ((Data[12] & 0xff) << 8);  //0x94-95 & 0x98-99  => Nr Pulsanti prmuti + Contdown ultimo pulsante << 8
+
+		Data[14] = 0;  //Setting default value to 0
+		if ((LastNPulsantiPremuti > 0) && (LastPulsantiCountDown > 0)) {
+			if ((Data[10] & 0xff) == 0) {  //LastNPulsantiPremuti = 0
+				Data[14] = (Data[14] & 0xffff0000) | 0xAA;
+#ifdef __UseLogger
+				memcpy(&Logger[LoggerCount * 16*4], Data,16*4);  //Ignoro ultimi 4 (8 bytes)
+				LoggerCount = (LoggerCount+1)& 0xf;
+#endif
 			}
-			LastNPulsantiPremuti = (Data[10] & 0xff);
-			LastPulsantiCountDown = (Data[12] & 0xff);
 		}
+		LastNPulsantiPremuti = (Data[10] & 0xff);
+		LastPulsantiCountDown = (Data[12] & 0xff);
 	}
 	if ((SWIMStatus == SWIM_Idle) && ((Data[14] & 0xffff) == 0xAA)) {  //9 bytes from 0x6C, if = AA then there is a new code
 		//Store time and code
@@ -96,7 +100,7 @@ void CheckStoreCode(uint8_t ControllerVersion) {
 				  //***   0x63 01/02.03 porta se codice ha aperto
 				Codes[NewCodePtr].Status = 0xAA0000 | (Data[1] >> 16);
 			} else {
-				Codes[NewCodePtr].Status = 0;
+				Codes[NewCodePtr].Status = 0xff;
 			}
 		} else {
 			Codes[NewCodePtr].Status = (Data[4] & 0xffff0000) | (Data[5] & 0xffff); //AAxxxx if opened, 01/02 if opened relais 1 or 2, ff if wrong code
